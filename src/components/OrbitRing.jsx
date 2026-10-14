@@ -30,7 +30,7 @@ const toPolar = ({ x, y }) => ({
 const BASE_POLAR = BASE_OFFSETS.map(toPolar)
 
 // Ring radius used when it has more than 6 circles: the mean radius of the Figma ring.
-const RING_RADIUS = 139.08
+export const RING_RADIUS = 139.08
 
 // How long a removed circle takes to fade out before it is unmounted (matches the
 // .slot__fill transition).
@@ -66,7 +66,7 @@ export function computeLayout(circles) {
 // its own colors ({ logo: { src, name, width, height } }).
 const contentId = (content) => content?.icon ?? content?.logo?.src ?? null
 
-function OrbitSlot({ variant, content, palette, late }) {
+export function OrbitSlot({ variant, content, palette, late }) {
   // Keep showing the last content while the circle fades out.
   const [shown, setShown] = useState(content)
   const id = contentId(content)
