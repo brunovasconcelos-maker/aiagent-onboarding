@@ -9,10 +9,18 @@ import { useAgent } from '../context/AgentContext.jsx'
 // area on the left and a fixed footer. `titleTop` is the title position in the
 // 1440x928 Figma frame; the options start 114px below it (58px title + 56px gap).
 //
-// slots: array of 6 entries (icon id or null), one per orbit position.
-export default function StepLayout({ titleLines, titleTop, slots, backTo, nextTo, children }) {
+// Orbit content, one of:
+//  - circles: the filled circles, see OrbitRing (grows past 6 circles);
+//  - slots: array of 6 entries (icon id or null), one per base position.
+export default function StepLayout({ titleLines, titleTop, slots, circles, backTo, nextTo, children }) {
   const { agentId } = useAgent()
   const agent = agents.find((a) => a.id === agentId) ?? agents[0]
+
+  const filledCircles =
+    circles ??
+    slots.flatMap((icon, position) =>
+      icon ? [{ key: `position-${position}`, icon, variant: position, position }] : [],
+    )
 
   return (
     <div className="step">
@@ -31,7 +39,7 @@ export default function StepLayout({ titleLines, titleTop, slots, backTo, nextTo
           <div className="orbit-area__agent">
             <AgentCircle agent={agent} />
           </div>
-          <OrbitRing slots={slots} palette={palettes[agent.id]} />
+          <OrbitRing circles={filledCircles} palette={palettes[agent.id]} />
         </div>
 
         <div className="step__footer">

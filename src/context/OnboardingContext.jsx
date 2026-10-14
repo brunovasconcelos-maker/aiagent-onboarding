@@ -1,9 +1,9 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react'
-import { firstFreePosition } from '../utils/slots.js'
+import { firstFreePosition, nextExtraVariant } from '../utils/slots.js'
 
 const STORAGE_KEY = 'aiagent-onboarding:answers'
 
-const EMPTY_ANSWERS = { purpose: null, tasks: [], taskSlots: {} }
+const EMPTY_ANSWERS = { purpose: null, tasks: [], taskSlots: {}, taskVariants: {} }
 
 const OnboardingContext = createContext(null)
 
@@ -15,6 +15,8 @@ function readStoredAnswers() {
         purpose: parsed.purpose ?? null,
         tasks: Array.isArray(parsed.tasks) ? parsed.tasks : [],
         taskSlots: parsed.taskSlots && typeof parsed.taskSlots === 'object' ? parsed.taskSlots : {},
+        taskVariants:
+          parsed.taskVariants && typeof parsed.taskVariants === 'object' ? parsed.taskVariants : {},
       }
     }
   } catch {
@@ -31,13 +33,32 @@ function persist(answers) {
   }
 }
 
-// First free orbit position for a newly selected task, or undefined when all six are
-// taken. Position 0 belongs to the step 1 answer when there is one.
-function freePositionFor(answers) {
+const BASE_POSITIONS = 6
+
+const filledCount = (answers) => (answers.purpose ? 1 : 0) + answers.tasks.length
+
+// Base positions (0-5) in use. Position 0 belongs to the step 1 answer when there is one.
+function occupiedPositions(answers) {
   const occupied = new Set(answers.purpose ? [0] : [])
   for (const position of Object.values(answers.taskSlots)) occupied.add(position)
-  const position = firstFreePosition(occupied)
-  return position === -1 ? undefined : position
+  return occupied
+}
+
+// When a deselect leaves exactly six circles, the ring goes back to its six base positions:
+// the remaining options close the gap and take positions 0-5 in clockwise order (base
+// positions first, then the extra circles in selection order), so each one moves at most
+// about one slot. Position 0 stays with the step 1 answer when there is one.
+function closeGaps(answers) {
+  if (filledCount(answers) !== BASE_POSITIONS) return answers
+  const placed = answers.tasks
+    .filter((id) => answers.taskSlots[id] !== undefined)
+    .sort((a, b) => answers.taskSlots[a] - answers.taskSlots[b])
+  const extras = answers.tasks.filter((id) => answers.taskSlots[id] === undefined)
+  const taskSlots = {}
+  ;[...placed, ...extras].forEach((id, i) => {
+    taskSlots[id] = (answers.purpose ? 1 : 0) + i
+  })
+  return { ...answers, taskSlots }
 }
 
 export function OnboardingProvider({ children }) {
@@ -57,23 +78,33 @@ export function OnboardingProvider({ children }) {
       update((prev) => {
         if (prev[key] === value) return prev
         const next = { ...prev, [key]: value }
-        return key === 'purpose' ? { ...next, tasks: [], taskSlots: {} } : next
+        return key === 'purpose' ? { ...next, tasks: [], taskSlots: {}, taskVariants: {} } : next
       }),
     [update],
   )
 
   // Selects or deselects a step 2 option. `tasks` keeps the selection order.
+  //  - taskSlots: the base position (0-5) of each option that has one;
+  //  - taskVariants: gradient variant of each option, kept while it stays selected.
+  // With fewer than six filled circles a new option takes the first free position
+  // (fill order); otherwise it becomes an extra circle and the ring grows.
   const toggleTask = useCallback(
     (id) =>
       update((prev) => {
-        // Deselecting frees the option's position; the others keep theirs.
         if (prev.tasks.includes(id)) {
-          const { [id]: _removed, ...taskSlots } = prev.taskSlots
-          return { ...prev, tasks: prev.tasks.filter((t) => t !== id), taskSlots }
+          const { [id]: _slot, ...taskSlots } = prev.taskSlots
+          const { [id]: _variant, ...taskVariants } = prev.taskVariants
+          return closeGaps({ ...prev, tasks: prev.tasks.filter((t) => t !== id), taskSlots, taskVariants })
         }
-        const position = freePositionFor(prev)
-        const taskSlots = position === undefined ? prev.taskSlots : { ...prev.taskSlots, [id]: position }
-        return { ...prev, tasks: [...prev.tasks, id], taskSlots }
+        const position =
+          filledCount(prev) < BASE_POSITIONS ? firstFreePosition(occupiedPositions(prev)) : undefined
+        const variant = position ?? nextExtraVariant(Object.values(prev.taskVariants))
+        return {
+          ...prev,
+          tasks: [...prev.tasks, id],
+          taskSlots: position === undefined ? prev.taskSlots : { ...prev.taskSlots, [id]: position },
+          taskVariants: { ...prev.taskVariants, [id]: variant },
+        }
       }),
     [update],
   )
