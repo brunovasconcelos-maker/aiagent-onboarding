@@ -33,36 +33,40 @@ export default function StepLayout({
     )
 
   return (
-    <div className="step">
-      <div className="step__stage" style={{ '--title-top': titleTop }}>
-        <h1 className="step__title">
-          {titleLines.map((line) => (
-            <span key={line}>{line}</span>
-          ))}
-        </h1>
+    <>
+      <div className="step">
+        <div className="step__stage" style={{ '--title-top': titleTop }}>
+          <h1 className="step__title">
+            {titleLines.map((line) => (
+              <span key={line}>{line}</span>
+            ))}
+          </h1>
 
-        <div className="step__scroll">
-          <div className="step__list">{children}</div>
-        </div>
-
-        <div className="orbit-area">
-          <div className="orbit-area__agent">
-            <AgentCircle agent={agent} />
+          <div className="step__scroll">
+            <div className="step__list">{children}</div>
           </div>
-          <OrbitRing circles={filledCircles} palette={palettes[agent.id]} />
-        </div>
 
-        <div className="step__footer">
-          <div className="step__bar">
-            <Link to={backTo} className="btn btn--text">
-              {backLabel}
-            </Link>
-            <Link to={nextTo} className="btn">
-              {nextLabel}
-            </Link>
+          <div className="orbit-area">
+            <div className="orbit-area__agent">
+              <AgentCircle agent={agent} />
+            </div>
+            <OrbitRing circles={filledCircles} palette={palettes[agent.id]} />
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Outside .step on purpose: that box is a size container used to scale the composition,
+          and the footer has to be fixed to the window, not to a container. */}
+      <div className="step__footer">
+        <div className="step__bar">
+          <Link to={backTo} className="btn btn--text">
+            {backLabel}
+          </Link>
+          <Link to={nextTo} className="btn">
+            {nextLabel}
+          </Link>
+        </div>
+      </div>
+    </>
   )
 }

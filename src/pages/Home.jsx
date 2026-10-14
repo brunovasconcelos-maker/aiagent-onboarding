@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { useOnboarding } from '../context/OnboardingContext.jsx'
 import laranja from '../assets/characters/Rubi.png'
 import roxo from '../assets/characters/Tris.png'
 import azul from '../assets/characters/Poli.png'
@@ -14,6 +16,13 @@ const spheres = [
 ]
 
 export default function Home() {
+  const { reset, start } = useOnboarding()
+
+  // Visiting the first page always starts over (also when arriving with the back button).
+  useEffect(() => {
+    reset()
+  }, [reset])
+
   return (
     <main className="home">
       <div className="home__content">
@@ -56,7 +65,7 @@ export default function Home() {
           </h1>
         </div>
 
-        <Link to="/passo-2" className="btn">
+        <Link to="/passo-2" className="btn" onClick={start}>
           Começar
         </Link>
       </div>

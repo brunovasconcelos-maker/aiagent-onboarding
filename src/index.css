@@ -24,6 +24,19 @@ body {
   flex: none;
 }
 
+/* The logo is a link to the first page; same size and position as the bare image. */
+.header__logo {
+  display: block;
+  flex: none;
+  cursor: pointer;
+}
+
+.header__logo:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+
 /* Home */
 
 .home {
@@ -382,12 +395,14 @@ body {
 }
 
 .step__stage {
-  --u: min(1px, calc(100cqw / 1440));
+  --stage-u: min(1px, calc(100cqw / 1440));
+  --u: var(--stage-u);
   position: relative;
   width: calc(1440 * var(--u));
-  /* the area below the header (64px): title and orbit stay put, only the list scrolls */
-  height: max(calc(100vh - 64px), calc(640 * var(--u)));
-  height: max(calc(100dvh - 64px), calc(640 * var(--u)));
+  /* exactly the area below the header (64px): the page never scrolls, the title stays put and
+     only the list scrolls (down to the bottom of the window, behind the footer) */
+  height: calc(100vh - 64px);
+  height: calc(100dvh - 64px);
   margin: 0 auto;
 }
 
@@ -538,18 +553,39 @@ body {
   outline-offset: calc(3 * var(--u));
 }
 
+/* The orbit area spans the full height of the window (it starts under the header: top -64px)
+   and the orbit sits at its vertical middle, so it is at 50% of the window height. Horizontally
+   it is centered at 1064.5px of the 1440px composition, the middle of the free space to the
+   right of the options. The orbit scale is the smaller of the width factor (--stage-u) and a
+   height factor that keeps its 439px circle between the header and the footer. */
 .orbit-area {
+  --u: min(
+    var(--stage-u),
+    max(
+      0.1px,
+      calc((50vh - max(64px, calc(88 * var(--stage-u))) - 8px) / 219.5)
+    )
+  );
+  --u: min(
+    var(--stage-u),
+    max(
+      0.1px,
+      calc((50dvh - max(64px, calc(88 * var(--stage-u))) - 8px) / 219.5)
+    )
+  );
   position: absolute;
-  left: calc(845 * var(--u));
-  top: calc(181 * var(--u));
+  top: -64px;
+  height: 100vh;
+  height: 100dvh;
+  left: calc(1064.5 * var(--stage-u) - 219.5 * var(--u));
   width: calc(438.998 * var(--u));
-  height: calc(438.998 * var(--u));
+  pointer-events: none;
 }
 
 .orbit-area__agent {
   position: absolute;
-  left: calc(158.715 * var(--u));
-  top: calc(158.715 * var(--u));
+  left: calc(50% - 60.7845 * var(--u));
+  top: calc(50% - 60.7845 * var(--u));
   width: calc(121.569 * var(--u));
   height: calc(121.569 * var(--u));
 }
@@ -709,7 +745,11 @@ body {
   to { transform: rotate(-360deg); }
 }
 
+/* The footer is rendered as a sibling of .step, outside the size container that scales the
+   composition, so it is fixed to the window and not to that container. Its own scale uses the
+   window width, which is the container width because the page never scrolls. */
 .step__footer {
+  --u: min(1px, calc(100vw / 1440));
   position: fixed;
   left: 0;
   right: 0;

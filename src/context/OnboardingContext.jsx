@@ -1,7 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react'
+import { useAgent } from './AgentContext.jsx'
 import { firstFreePosition, nextExtraVariant } from '../utils/slots.js'
-
-const STORAGE_KEY = 'aiagent-onboarding:answers'
 
 const EMPTY_ANSWERS = {
   purpose: null,
@@ -13,38 +12,6 @@ const EMPTY_ANSWERS = {
 }
 
 const OnboardingContext = createContext(null)
-
-const asArray = (value) => (Array.isArray(value) ? value : [])
-const asObject = (value) => (value && typeof value === 'object' && !Array.isArray(value) ? value : {})
-
-function readStoredAnswers() {
-  try {
-    const parsed = JSON.parse(sessionStorage.getItem(STORAGE_KEY))
-    if (parsed && typeof parsed === 'object') {
-      const tasks = asArray(parsed.tasks)
-      const tools = asArray(parsed.tools)
-      return {
-        purpose: parsed.purpose ?? null,
-        tasks,
-        tools,
-        order: Array.isArray(parsed.order) ? parsed.order : [...tasks, ...tools],
-        taskSlots: asObject(parsed.taskSlots),
-        taskVariants: asObject(parsed.taskVariants),
-      }
-    }
-  } catch {
-    // sessionStorage can be unavailable or hold invalid JSON
-  }
-  return EMPTY_ANSWERS
-}
-
-function persist(answers) {
-  try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(answers))
-  } catch {
-    // ignore: the in-memory state still works
-  }
-}
 
 const BASE_POSITIONS = 6
 
@@ -80,15 +47,23 @@ function closeGaps(answers) {
 }
 
 export function OnboardingProvider({ children }) {
-  const [answers, setAnswers] = useState(readStoredAnswers)
+  // Everything lives in memory only (nothing is saved in the browser): a reload starts over
+  // from the first page. `started` is true once the user clicks "Começar" on the first page;
+  // every other route sends the user back to "/" until then.
+  const [answers, setAnswers] = useState(EMPTY_ANSWERS)
+  const [started, setStarted] = useState(false)
+  const { resetAgent } = useAgent()
 
-  const update = useCallback((compute) => {
-    setAnswers((prev) => {
-      const next = compute(prev)
-      if (next !== prev) persist(next)
-      return next
-    })
-  }, [])
+  const update = useCallback((compute) => setAnswers(compute), [])
+
+  const start = useCallback(() => setStarted(true), [])
+
+  // Back to the very beginning: default agent, no answers, not started.
+  const reset = useCallback(() => {
+    setAnswers(EMPTY_ANSWERS)
+    setStarted(false)
+    resetAgent()
+  }, [resetAgent])
 
   // Changing the purpose changes the step 2 options, so the chosen tasks are cleared.
   // The tools (step 3) stay. A new step 1 answer takes position 0, so whichever circle sat
@@ -155,8 +130,8 @@ export function OnboardingProvider({ children }) {
   const toggleTool = useCallback((id) => toggleItem('tools', id), [toggleItem])
 
   const value = useMemo(
-    () => ({ answers, setAnswer, toggleTask, toggleTool }),
-    [answers, setAnswer, toggleTask, toggleTool],
+    () => ({ answers, setAnswer, toggleTask, toggleTool, started, start, reset }),
+    [answers, setAnswer, toggleTask, toggleTool, started, start, reset],
   )
 
   return <OnboardingContext.Provider value={value}>{children}</OnboardingContext.Provider>

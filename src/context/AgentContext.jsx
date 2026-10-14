@@ -1,33 +1,15 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react'
-import { agents, DEFAULT_AGENT_ID } from '../data/agents.js'
-
-const STORAGE_KEY = 'aiagent-onboarding:agent'
+import { DEFAULT_AGENT_ID } from '../data/agents.js'
 
 const AgentContext = createContext(null)
 
-function readStoredId() {
-  try {
-    const id = sessionStorage.getItem(STORAGE_KEY)
-    if (agents.some((agent) => agent.id === id)) return id
-  } catch {
-    // sessionStorage can be unavailable (private mode, blocked storage)
-  }
-  return DEFAULT_AGENT_ID
-}
-
+// The selected agent lives in memory only: a reload starts over from the first page.
 export function AgentProvider({ children }) {
-  const [agentId, setAgentIdState] = useState(readStoredId)
+  const [agentId, setAgentId] = useState(DEFAULT_AGENT_ID)
 
-  const setAgentId = useCallback((id) => {
-    setAgentIdState(id)
-    try {
-      sessionStorage.setItem(STORAGE_KEY, id)
-    } catch {
-      // ignore: the in-memory state still works
-    }
-  }, [])
+  const resetAgent = useCallback(() => setAgentId(DEFAULT_AGENT_ID), [])
 
-  const value = useMemo(() => ({ agentId, setAgentId }), [agentId, setAgentId])
+  const value = useMemo(() => ({ agentId, setAgentId, resetAgent }), [agentId, resetAgent])
 
   return <AgentContext.Provider value={value}>{children}</AgentContext.Provider>
 }
