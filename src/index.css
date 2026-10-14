@@ -385,19 +385,18 @@ body {
   --u: min(1px, calc(100cqw / 1440));
   position: relative;
   width: calc(1440 * var(--u));
-  height: calc(864 * var(--u));
+  /* the area below the header (64px): title and orbit stay put, only the list scrolls */
+  height: max(calc(100vh - 64px), calc(640 * var(--u)));
+  height: max(calc(100dvh - 64px), calc(640 * var(--u)));
   margin: 0 auto;
 }
 
-.purpose {
+.step__title {
   position: absolute;
   left: calc(270 * var(--u));
-  top: calc(116 * var(--u));
+  top: calc((var(--title-top) - 64) * var(--u));
   width: calc(440 * var(--u));
-}
-
-.purpose__title {
-  margin: 0 0 calc(56 * var(--u));
+  margin: 0;
   font-size: calc(24 * var(--u));
   font-weight: 500;
   line-height: 1.1;
@@ -406,13 +405,56 @@ body {
   color: #000;
 }
 
-.purpose__title span {
+.step__title span {
   display: block;
-  white-space: pre; /* keeps the trailing space of the first line, as in Figma */
+  white-space: pre; /* keeps a trailing space of a line, as in Figma */
 }
 
-.purpose__title span + span {
+.step__title span + span {
   margin-top: calc(6 * var(--u));
+}
+
+/* Options area: starts 114px below the title and runs to the bottom of the viewport,
+   behind the footer. 4px of padding keep the focus outlines from being clipped. */
+.step__scroll {
+  position: absolute;
+  left: calc(270 * var(--u) - 4px);
+  top: calc((var(--title-top) + 114 - 64) * var(--u) - 4px);
+  bottom: 0;
+  box-sizing: border-box;
+  width: calc(440 * var(--u) + 24px);
+  padding: 4px 0 calc(88 * var(--u) + 4px) 4px;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.18) transparent;
+}
+
+.step__scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.step__scroll::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.step__list {
+  width: calc(440 * var(--u));
+}
+
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(12 * var(--u));
+}
+
+.option.option--row {
+  flex-direction: row;
+  align-items: center;
+  gap: calc(20 * var(--u));
+  width: 100%;
+  padding: calc(20 * var(--u) - 1px);
 }
 
 .purpose__grid {
@@ -601,17 +643,35 @@ body {
   to { transform: rotate(-360deg); }
 }
 
-.step__bar {
+.step__footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(88 * var(--u));
+  background: #fff;
+}
+
+/* Soft fade at the top edge: the options look cut by it as they scroll behind. */
+.step__footer::before {
+  content: '';
   position: absolute;
   left: 0;
-  top: calc(776 * var(--u));
+  right: 0;
+  bottom: 100%;
+  height: calc(40 * var(--u));
+  background: linear-gradient(to top, #fff, rgba(255, 255, 255, 0));
+  pointer-events: none;
+}
+
+.step__bar {
   box-sizing: border-box;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  width: 100%;
-  height: calc(88 * var(--u));
-  padding: calc(16 * var(--u)) calc(270 * var(--u)) 0;
+  height: 100%;
+  /* aligned with the 1440px composition: 270px in from its edges */
+  padding: calc(16 * var(--u)) calc(50% - 450 * var(--u)) 0;
 }
 
 .step__bar .btn {
