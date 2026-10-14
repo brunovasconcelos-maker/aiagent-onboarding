@@ -62,19 +62,25 @@ export function computeLayout(circles) {
   return layout
 }
 
-function OrbitSlot({ variant, iconId, palette, late }) {
-  // Keep showing the last icon while the circle fades out.
-  const [shownIcon, setShownIcon] = useState(iconId)
-  useEffect(() => {
-    if (iconId) setShownIcon(iconId)
-  }, [iconId])
+// What a circle shows on top of its gradient: a white icon ({ icon: id }) or a tool logo in
+// its own colors ({ logo: { src, name, width, height } }).
+const contentId = (content) => content?.icon ?? content?.logo?.src ?? null
 
-  const Icon = shownIcon ? icons[shownIcon] : null
+function OrbitSlot({ variant, content, palette, late }) {
+  // Keep showing the last content while the circle fades out.
+  const [shown, setShown] = useState(content)
+  const id = contentId(content)
+  useEffect(() => {
+    if (content) setShown(content)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id])
+
+  const Icon = shown?.icon ? icons[shown.icon] : null
   const { backgroundImage, bleed } = buildGradient(palette, variant)
 
   return (
     <div className="slot">
-      <div className="slot__fill" data-filled={Boolean(iconId)} data-late={late} aria-hidden="true">
+      <div className="slot__fill" data-filled={Boolean(content)} data-late={late} aria-hidden="true">
         <div
           className="slot__gradient"
           style={{ backgroundImage, inset: `${-bleed * 100}%` }}
@@ -83,6 +89,16 @@ function OrbitSlot({ variant, iconId, palette, late }) {
           <span className="slot__icon">
             <Icon weight="regular" color="#fff" />
           </span>
+        )}
+        {shown?.logo && (
+          <img
+            className="slot__logo"
+            src={shown.logo.src}
+            alt={shown.logo.name}
+            width={shown.logo.width}
+            height={shown.logo.height}
+            style={{ '--w': shown.logo.width, '--h': shown.logo.height }}
+          />
         )}
       </div>
     </div>
@@ -125,7 +141,7 @@ function RingCircle({ circle, layout, leaving, animateIn, ringRef, palette }) {
           <div className="ring__scale" style={{ '--scale': layout.scale }}>
             <OrbitSlot
               variant={circle.variant}
-              iconId={shown && !leaving ? circle.icon : null}
+              content={shown && !leaving ? { icon: circle.icon, logo: circle.logo } : null}
               palette={palette}
               late={circle.position === undefined}
             />
@@ -138,7 +154,8 @@ function RingCircle({ circle, layout, leaving, animateIn, ringRef, palette }) {
 
 // circles: the filled circles, [{ key, icon, variant, position }]:
 //   key       stable identity (keeps the circle mounted while the ring changes)
-//   icon      icon id shown in the circle
+//   icon      icon id shown in the circle (white), or
+//   logo      { src, name, width, height }: a tool logo in its own colors
 //   variant   index passed to the gradient function, so circles look different
 //   position  base position 0-5 (clockwise from the left), undefined for the extra
 //             circles that exist only when more than 6 are filled
@@ -156,7 +173,7 @@ export default function OrbitRing({ circles, palette }) {
   // `order` is the render order of every mounted circle (current and leaving). It never
   // changes for a circle that stays mounted: moving a DOM node would cancel its transitions
   // and restart its animations.
-  const signature = circles.map((c) => `${c.key}:${c.position}:${c.icon}`).join('|')
+  const signature = circles.map((c) => `${c.key}:${c.position}:${c.icon ?? c.logo?.src}`).join('|')
   const [previous, setPrevious] = useState({
     signature,
     circles,

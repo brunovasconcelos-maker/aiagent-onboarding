@@ -504,6 +504,16 @@ body {
   white-space: pre-line;
 }
 
+.option__tile--logo {
+  background: #f7f7f7;
+}
+
+.option__tile--logo img {
+  display: block;
+  width: calc(var(--w) * var(--u));
+  height: calc(var(--h) * var(--u));
+}
+
 .option[aria-pressed='true'] {
   border-color: #232627;
   background: #232627;
@@ -674,6 +684,16 @@ body {
   height: calc(67.38 * var(--u));
   /* +1px / +2px: measured offset of the icon in the Figma render */
   transform: translate(calc(-50% + var(--u)), calc(-50% + 2 * var(--u)));
+}
+
+.slot__logo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  max-width: none;
+  width: calc(var(--w) * var(--u));
+  height: calc(var(--h) * var(--u));
+  transform: translate(-50%, -50%);
 }
 
 .slot__icon svg {

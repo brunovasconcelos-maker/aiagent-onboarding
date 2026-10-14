@@ -12,7 +12,17 @@ import { useAgent } from '../context/AgentContext.jsx'
 // Orbit content, one of:
 //  - circles: the filled circles, see OrbitRing (grows past 6 circles);
 //  - slots: array of 6 entries (icon id or null), one per base position.
-export default function StepLayout({ titleLines, titleTop, slots, circles, backTo, nextTo, children }) {
+export default function StepLayout({
+  titleLines,
+  titleTop,
+  slots,
+  circles,
+  backTo,
+  nextTo,
+  backLabel = 'Voltar',
+  nextLabel = 'Continuar',
+  children,
+}) {
   const { agentId } = useAgent()
   const agent = agents.find((a) => a.id === agentId) ?? agents[0]
 
@@ -45,10 +55,10 @@ export default function StepLayout({ titleLines, titleTop, slots, circles, backT
         <div className="step__footer">
           <div className="step__bar">
             <Link to={backTo} className="btn btn--text">
-              Voltar
+              {backLabel}
             </Link>
             <Link to={nextTo} className="btn">
-              Continuar
+              {nextLabel}
             </Link>
           </div>
         </div>
