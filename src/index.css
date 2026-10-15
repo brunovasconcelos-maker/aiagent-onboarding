@@ -361,25 +361,64 @@ body:has(.agents) {
     translateY(calc(var(--wheel-radius) * var(--u) * -1)) rotate(calc(var(--delta) * -1deg));
 }
 
-/* At rest the groups have no transform (and no compositing layer), so the circle is painted exactly
-   as before; the wheel loop sets data-moving only while it turns. */
-.agents__circle:not([data-moving='true']) .wheel__group {
+/* The group at the top at rest has no transform (and no compositing layer), so its circle is
+   painted exactly as the plain circle was; the wheel loop sets data-top only on it, and only while
+   it is at rest. The others keep their wheel transform and sit outside the window. */
+.wheel__group[data-top='true'] {
   transform: none;
   will-change: auto;
 }
 
-.agents__slot {
+/* The round window: the main circle position, clipped to a circle (static clip-path), black behind
+   the sliding circles. */
+.agents__window {
   position: absolute;
-  inset: 1px;
-  border-radius: 50%;
+  inset: 0;
+  clip-path: circle(50%);
+}
+
+/* Black behind the sliding circles, only while the wheel moves: a clip edge over a black layer
+   would darken the rim of the circle at rest (the clip antialiases each layer separately). */
+.agents__circle[data-moving='true'] .agents__window {
   background: #000;
 }
 
+/* the scene circle is 2px larger than the window, so its own edge is outside the clip at rest */
 .agents__scene {
   position: absolute;
-  inset: 0;
+  inset: -1px;
   overflow: hidden;
   border-radius: 50%;
+}
+
+/* Overflow copy of a character: a box twice the circle, centered on it, masked to the area
+   outside the circle (the mask reaches 1px into the circle so the two copies overlap and no seam
+   shows). Static mask, only the opacity changes. */
+.agents__overflow {
+  position: absolute;
+  left: calc(-240 * var(--u));
+  top: calc(-240 * var(--u));
+  width: calc(960 * var(--u));
+  height: calc(960 * var(--u));
+  opacity: 0;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent calc(240 * var(--u) - 1px), #000 calc(240 * var(--u) - 0.5px));
+  mask-image: radial-gradient(circle at 50% 50%, transparent calc(240 * var(--u) - 1px), #000 calc(240 * var(--u) - 0.5px));
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+.agents__overflow-box {
+  position: absolute;
+  left: calc(240 * var(--u));
+  top: calc(240 * var(--u));
+  width: calc(480 * var(--u));
+  height: calc(480 * var(--u));
+}
+
+.agents__scene-box {
+  position: absolute;
+  inset: 1px;
 }
 
 .agents__scene img {
@@ -446,6 +485,11 @@ body:has(.agents) {
   .wheel__group {
     transform: none;
     will-change: opacity;
+  }
+
+  /* the crossfade is over the page, not over black */
+  .agents__circle[data-moving='true'] .agents__window {
+    background: transparent;
   }
 }
 

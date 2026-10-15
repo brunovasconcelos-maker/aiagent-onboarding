@@ -56,6 +56,7 @@ export default function Passo2() {
       root: circleRef.current,
       groups: [...circleRef.current.querySelectorAll('.wheel__group')],
       names: [...namesRef.current.children],
+      overflows: [...circleRef.current.querySelectorAll('.agents__overflow')],
       index: selectedIndex,
     })
     wheel.current = instance
@@ -187,32 +188,45 @@ export default function Passo2() {
           className="agents__circle"
           style={{ '--wheel-radius': WHEEL.radius, '--wheel-step': WHEEL.stepDeg }}
         >
-          {/* black slot at the main position, 2px smaller than the scene circle: only seen while
-              the circles slide over it */}
-          <div className="agents__slot" aria-hidden="true" />
-          {agents.map((agent, index) => (
-            <div
-              key={agent.id}
-              className="wheel__group"
-              data-active={agent.id === agentId}
-              style={{ '--i': index }}
-            >
-              <div className="agents__scene">
-                <img
-                  src={agent.scene}
-                  alt=""
-                  width={1440}
-                  height={928}
-                  decoding="async"
-                  style={{
-                    left: pct(agent.sceneImage.x),
-                    top: pct(agent.sceneImage.y),
-                    width: pct(agent.sceneImage.w),
-                    height: pct(agent.sceneImage.h),
-                  }}
-                />
+          {/* the round window: everything on the wheel is clipped by the main circle, on black */}
+          <div className="agents__window">
+            {agents.map((agent, index) => (
+              <div
+                key={agent.id}
+                className="wheel__group"
+                data-active={agent.id === agentId}
+                style={{ '--i': index }}
+              >
+                {/* the scene circle is 2px larger than the window; the image keeps its exact place
+                    relative to the 480 box */}
+                <div className="agents__scene">
+                  <div className="agents__scene-box">
+                    <img
+                      src={agent.scene}
+                      alt=""
+                      width={1440}
+                      height={928}
+                      decoding="async"
+                      style={{
+                        left: pct(agent.sceneImage.x),
+                        top: pct(agent.sceneImage.y),
+                        width: pct(agent.sceneImage.w),
+                        height: pct(agent.sceneImage.h),
+                      }}
+                    />
+                  </div>
+                </div>
+                <CharacterLayer agent={agent} />
               </div>
-              <CharacterLayer agent={agent} />
+            ))}
+          </div>
+          {/* copies of the characters outside the window, masked to the area outside the circle:
+              they keep what sticks out above it (Rubi's horns); only the selected one is visible */}
+          {agents.map((agent) => (
+            <div key={agent.id} className="agents__overflow" aria-hidden="true">
+              <div className="agents__overflow-box">
+                <CharacterLayer agent={agent} />
+              </div>
             </div>
           ))}
         </div>
