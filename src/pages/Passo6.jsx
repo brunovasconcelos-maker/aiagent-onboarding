@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { creatingMessages, doneButton, doneText, doneTitle, noToolsMessage } from '../data/finale.js'
 import { useOnboarding } from '../context/OnboardingContext.jsx'
 import { buildCircles } from '../utils/circles.js'
@@ -11,7 +11,8 @@ import { orbitStore } from '../utils/orbitStore.js'
 // orbit's own loop runs the speed ramp, the spiral and the pulse, and reports the phase and the
 // message back through these callbacks.
 export default function Passo6() {
-  const { answers, setCreationPhase } = useOnboarding()
+  const { answers, setCreationPhase, reset } = useOnboarding()
+  const navigate = useNavigate()
 
   const circles = useMemo(() => buildCircles(answers), [answers])
   const keys = useMemo(() => circles.map((c) => c.key), [circles])
@@ -55,12 +56,32 @@ export default function Passo6() {
 
   const done = phase === 'done'
 
+  // "Começar" starts the onboarding over: after a soft fade (the page and the orbit) it does exactly
+  // what the logo does: the same reset, then back to the first page.
+  const [leaving, setLeaving] = useState(false)
+  const leaveTimer = useRef(0)
+  useEffect(() => () => clearTimeout(leaveTimer.current), [])
+  const restart = (event) => {
+    event.preventDefault()
+    if (!burstOver || leaving) return
+    setLeaving(true)
+    setCreationPhase('leaving') // the orbit fades out with the page
+    leaveTimer.current = setTimeout(
+      () => {
+        reset()
+        navigate('/')
+      },
+      reduced ? 0 : TIMING.leaveFadeMs,
+    )
+  }
+
   return (
     <div className="finale">
       <div
         className="finale__stage"
         data-phase={phase}
         data-reduced={reduced}
+        data-leaving={leaving}
         style={{
           '--fade-in': `${TIMING.fadeInMs}ms`,
           '--message-fade': `${TIMING.messageFadeMs}ms`,
@@ -68,6 +89,7 @@ export default function Passo6() {
           '--done-fade': `${TIMING.doneFadeMs}ms`,
           '--done-rise': `${TIMING.doneRisePx}px`,
           '--done-button-delay': `${TIMING.doneButtonDelayMs}ms`,
+          '--leave-fade': `${TIMING.leaveFadeMs}ms`,
         }}
       >
         <div className="finale__messages" data-hidden={phase !== 'creating'} aria-live="polite">
@@ -90,14 +112,12 @@ export default function Passo6() {
               <span>{doneText}</span>
             </p>
             <Link
-              to="/passo-7"
+              to="/"
               className="btn finale__cta"
-              data-locked={!burstOver}
+              data-locked={!burstOver || leaving}
               tabIndex={burstOver ? undefined : -1}
               aria-disabled={!burstOver}
-              onClick={(event) => {
-                if (!burstOver) event.preventDefault()
-              }}
+              onClick={restart}
             >
               {doneButton}
             </Link>

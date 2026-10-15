@@ -50,6 +50,7 @@ export const TIMING = {
   doneFadeMs: 400, // text of the final state
   doneRisePx: 8,
   doneButtonDelayMs: 200,
+  leaveFadeMs: 300, // "Começar": the page and the orbit fade out before the onboarding restarts
 }
 
 export const ease = {

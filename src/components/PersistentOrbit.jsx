@@ -42,7 +42,7 @@ export default function PersistentOrbit() {
   }
 
   const circles = useMemo(
-    () => (view.pos === 'center' && creationPhase === 'done' ? [] : buildCircles(answers)),
+    () => (view.pos === 'center' && (creationPhase === 'done' || creationPhase === 'leaving') ? [] : buildCircles(answers)),
     [answers, creationPhase, view.pos],
   )
   // While hidden the orbit keeps what it showed, so it fades out as it was; once invisible it
@@ -66,6 +66,7 @@ export default function PersistentOrbit() {
       data-mode={mode}
       data-pos={view.pos}
       data-instant={view.instant}
+      data-leaving={creationPhase === 'leaving'}
       aria-hidden="true"
       style={{ '--agent-color': agent.color, '--agent-rgb': rgbOf(agent.color) }}
     >

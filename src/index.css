@@ -693,7 +693,8 @@ body:has(.agents) {
   transition: opacity 300ms ease;
 }
 
-.porbit[data-mode='hidden'] {
+.porbit[data-mode='hidden'],
+.porbit[data-leaving='true'] {
   opacity: 0;
 }
 
@@ -1086,6 +1087,12 @@ body:has(.agents) {
   inset: 0;
   pointer-events: none;
   animation: finale-in var(--fade-in) ease-out backwards;
+}
+
+/* leaving through "Começar": the page fades out (the orbit does too, see .porbit) */
+.finale__stage[data-leaving='true'] {
+  opacity: 0;
+  transition: opacity var(--leave-fade, 300ms) ease;
 }
 
 @keyframes finale-in {
