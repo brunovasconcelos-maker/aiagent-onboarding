@@ -7,6 +7,11 @@ import roxo from '../assets/characters/Tris.png'
 
 // Every timing and measure of the first-page animation lives here (ms, degrees, Figma px of the
 // 210px group at 1440px unless the name says otherwise; the group scales with the page).
+// One rotation of the orbit, in seconds: constant, during the emissions and after them.
+export const ORBIT_SECONDS_PER_ROTATION = 8
+const SPACING_DEG = 46 // angle between consecutive agents
+const ORBIT_SPEED = 360 / ORBIT_SECONDS_PER_ROTATION // degrees per second
+
 export const INTRO = {
   // orb (sphere of 80px; the PNG, 624px, has its glow: the sphere is 314px of it)
   orbSize: 80,
@@ -18,7 +23,7 @@ export const INTRO = {
 
   // sequence
   firstEmitMs: 1000, // the orb is alone for this long
-  emitEveryMs: 1000,
+  emitEveryMs: (SPACING_DEG / ORBIT_SPEED) * 1000, // 1022ms: at the orbit speed this keeps the agents 46 degrees apart
   order: ['laranja', 'azul', 'verde', 'roxo'], // Rubi, Poli, Rocco, Tris
   contractMs: 120, // right before an emission the orb contracts...
   contractScale: 0.95,
@@ -34,12 +39,9 @@ export const INTRO = {
   startScale: 0.2, // an agent is born small, at the center, behind the orb
   springMs: 800, // outward move to the orbit radius, with a gentle overshoot
   orbitRadius: 83.4, // mean radius of the three evenly placed agents in Figma
-  spacingDeg: 46, // angle between consecutive agents
+  spacingDeg: SPACING_DEG,
   emitAngle: 61.2, // screen angle where agents are born (lower right); with 46 degrees between
   //                  agents, after the 4th emission the arrangement is the one of node 637-1381
-  speedWhileEmitting: 46, // degrees per second (46 per second: one agent per second keeps 46 degrees)
-  speedRest: 22.5, // one turn per 16s
-  slowdownMs: 2000, // eases from speedWhileEmitting to speedRest after the last agent joined
   maxDt: 0.1, // seconds
 }
 
@@ -86,7 +88,7 @@ const polar = ([x, y]) => [Math.hypot(x, y), (Math.atan2(y, x) * 180) / Math.PI]
 // The orb that expels the 4 agents, which then orbit around it (counterclockwise). One angle
 // (--intro-phase, degrees, integrated as angle += speed x dt in one requestAnimationFrame loop)
 // drives every agent: each one has its own start phase (--p0) and the shared emission angle (--e),
-// so the spacing between them never changes; the speed can change without ever jumping the angle.
+// so the spacing between them never changes.
 export default function OrbIntro() {
   const rootRef = useRef(null)
 
@@ -121,8 +123,6 @@ export default function OrbIntro() {
     }
 
     const t0 = performance.now()
-    const lastEmit = INTRO.firstEmitMs + (INTRO.order.length - 1) * INTRO.emitEveryMs
-    const joined = lastEmit + INTRO.springMs
     let last = t0
     let phase = 0
     let frame = 0
@@ -132,9 +132,7 @@ export default function OrbIntro() {
       const dt = Math.min((now - last) / 1000, INTRO.maxDt)
       last = now
 
-      // speed: constant while emitting, then eases down (smoothstep) and stays there
-      const k = clamp01((t - joined) / INTRO.slowdownMs)
-      const speed = INTRO.speedWhileEmitting + (INTRO.speedRest - INTRO.speedWhileEmitting) * (k * k * (3 - 2 * k))
+      const speed = ORBIT_SPEED // constant: the same during and after the emissions
       phase += speed * dt
       root.style.setProperty('--intro-phase', String(phase))
 
