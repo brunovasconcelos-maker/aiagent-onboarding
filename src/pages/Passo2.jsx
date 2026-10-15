@@ -1,7 +1,8 @@
-import { useLayoutEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { agents } from '../data/agents.js'
 import { useAgent } from '../context/AgentContext.jsx'
+import { createWheel, WHEEL } from '../utils/agentWheel.js'
 import { CIRCLE, computeLayout, measureStage } from '../utils/agentsLayout.js'
 
 const pct = (n) => `${n}%`
@@ -42,6 +43,31 @@ export default function Passo2() {
   const rootRef = useRef(null)
   const titleRef = useRef(null)
   const buttonRef = useRef(null)
+  const circleRef = useRef(null)
+  const namesRef = useRef(null)
+  const wheel = useRef(null)
+  const selectedIndex = Math.max(0, agents.findIndex((a) => a.id === agentId))
+
+  // The hidden wheel (see utils/agentWheel.js): created once, before the first paint, and
+  // retargeted when the agent changes. Its loop is cancelled on unmount (StrictMode runs this
+  // twice, each run cleans up after itself).
+  useLayoutEffect(() => {
+    const instance = createWheel({
+      root: circleRef.current,
+      groups: [...circleRef.current.querySelectorAll('.wheel__group')],
+      names: [...namesRef.current.children],
+      index: selectedIndex,
+    })
+    wheel.current = instance
+    return () => {
+      instance.destroy()
+      wheel.current = null
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  useEffect(() => {
+    wheel.current?.setTarget(selectedIndex)
+  }, [selectedIndex])
 
   // Spacing: measure the logo, the title block and the button, compute the layout and write it
   // to CSS variables on the page root. Recomputed (once per frame at most) when the window
@@ -156,39 +182,46 @@ export default function Passo2() {
           })}
         </div>
 
-        <div className="agents__circle">
-          <div className="agents__scene">
-            {agents.map((agent) => (
-              <img
-                key={agent.id}
-                className="agent__layer"
-                data-active={agent.id === agentId}
-                src={agent.scene}
-                alt=""
-                width={1440}
-                height={928}
-                decoding="async"
-                style={{
-                  left: pct(agent.sceneImage.x),
-                  top: pct(agent.sceneImage.y),
-                  width: pct(agent.sceneImage.w),
-                  height: pct(agent.sceneImage.h),
-                }}
-              />
-            ))}
-          </div>
-          {agents.map((agent) => (
-            <div key={agent.id} className="agent__layer" data-active={agent.id === agentId}>
+        <div
+          ref={circleRef}
+          className="agents__circle"
+          style={{ '--wheel-radius': WHEEL.radius, '--wheel-step': WHEEL.stepDeg }}
+        >
+          {/* black slot at the main position, 2px smaller than the scene circle: only seen while
+              the circles slide over it */}
+          <div className="agents__slot" aria-hidden="true" />
+          {agents.map((agent, index) => (
+            <div
+              key={agent.id}
+              className="wheel__group"
+              data-active={agent.id === agentId}
+              style={{ '--i': index }}
+            >
+              <div className="agents__scene">
+                <img
+                  src={agent.scene}
+                  alt=""
+                  width={1440}
+                  height={928}
+                  decoding="async"
+                  style={{
+                    left: pct(agent.sceneImage.x),
+                    top: pct(agent.sceneImage.y),
+                    width: pct(agent.sceneImage.w),
+                    height: pct(agent.sceneImage.h),
+                  }}
+                />
+              </div>
               <CharacterLayer agent={agent} />
             </div>
           ))}
         </div>
 
-        <div className="agents__names" aria-live="polite">
+        <div ref={namesRef} className="agents__names" aria-live="polite">
           {agents.map((agent) => (
             <p
               key={agent.id}
-              className="agents__name agent__layer"
+              className="agents__name"
               data-active={agent.id === agentId}
               aria-hidden={agent.id !== agentId}
             >
