@@ -28,10 +28,13 @@ export default function Passo6() {
 
   const [phase, setPhase] = useState('creating') // creating | merging | done
   const [messageIndex, setMessageIndex] = useState(0)
+  // the button cannot be used until the burst of light is completely gone
+  const [burstOver, setBurstOver] = useState(false)
 
   useEffect(() => {
     setPhase('creating')
     setMessageIndex(0)
+    setBurstOver(false)
     const stop = orbitStore.startSequence({
       plan,
       keys,
@@ -42,6 +45,7 @@ export default function Passo6() {
         setCreationPhase(next)
       },
       onMessage: setMessageIndex,
+      onBurstEnd: () => setBurstOver(true),
     })
     return () => {
       stop()
@@ -85,7 +89,16 @@ export default function Passo6() {
               <span>{doneTitle}</span>
               <span>{doneText}</span>
             </p>
-            <Link to="/passo-7" className="btn finale__cta">
+            <Link
+              to="/passo-7"
+              className="btn finale__cta"
+              data-locked={!burstOver}
+              tabIndex={burstOver ? undefined : -1}
+              aria-disabled={!burstOver}
+              onClick={(event) => {
+                if (!burstOver) event.preventDefault()
+              }}
+            >
               {doneButton}
             </Link>
           </>

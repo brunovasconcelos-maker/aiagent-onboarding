@@ -716,9 +716,61 @@ body:has(.agents) {
   transition: none;
 }
 
+.porbit__defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+/* Burst of light (creation sequence): both layers sit behind the agent circle, never take
+   clicks, and are only animated (transform, opacity) while data-burst is set. */
+.porbit__glow,
+.porbit__burst-ring {
+  position: absolute;
+  z-index: 3;
+  left: calc(-60.7845 * var(--u));
+  top: calc(-60.7845 * var(--u));
+  width: calc(121.569 * var(--u));
+  height: calc(121.569 * var(--u));
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.porbit__glow {
+  background: radial-gradient(
+    circle closest-side,
+    rgb(var(--agent-rgb) / var(--glow-alpha, 0.5)) 0%,
+    rgb(var(--agent-rgb) / 0) 100%
+  );
+}
+
+.porbit__burst-ring {
+  box-sizing: border-box;
+  border: calc(var(--burst-ring-px, 2) * var(--u)) solid var(--agent-color);
+}
+
+.porbit[data-burst='true'] .porbit__glow {
+  animation: porbit-glow var(--glow-ms, 900ms) ease-out both;
+}
+
+.porbit[data-burst='true'] .porbit__burst-ring {
+  animation: porbit-burst-ring var(--burst-ring-ms, 600ms) ease-out both;
+}
+
+@keyframes porbit-glow {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(var(--glow-scale, 3.5)); }
+}
+
+@keyframes porbit-burst-ring {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(var(--burst-ring-scale, 2.5)); }
+}
+
 .porbit__agent {
   position: absolute;
-  z-index: 2;
+  z-index: 4;
   left: calc(-60.7845 * var(--u));
   top: calc(-60.7845 * var(--u));
   width: calc(121.569 * var(--u));
@@ -744,7 +796,7 @@ body:has(.agents) {
 
 .ring {
   position: absolute;
-  z-index: 1;
+  z-index: 2;
   left: 0;
   top: 0;
   width: 0;
@@ -768,7 +820,7 @@ body:has(.agents) {
    transition), so the ring can reshape along an arc and the circle never tilts. */
 .ring__arm--circle {
   /* --merge (0 to 1) is only used by the creation sequence: circles spiral into the center */
-  transform: rotate(calc(var(--phi) * 1deg))
+  transform: rotate(calc((var(--phi) + var(--swirl, 0)) * 1deg))
     translateX(calc(var(--radius) * var(--u) * -1 * (1 - var(--merge, 0))));
   transition: transform 0.4s ease-out;
 }
@@ -779,7 +831,7 @@ body:has(.agents) {
   top: 0;
   width: 0;
   height: 0;
-  transform: rotate(calc(var(--phi) * -1deg));
+  transform: rotate(calc((var(--phi) + var(--swirl, 0)) * -1deg));
   transition: transform 0.4s ease-out;
 }
 
@@ -803,14 +855,79 @@ body:has(.agents) {
 .ring__scale {
   width: 100%;
   height: 100%;
-  transform: scale(calc(var(--scale) * (1 - var(--merge, 0))));
+  transform: scale(calc(var(--scale) * (1 - var(--shrink, 0))));
   transition: transform 0.4s ease-out;
+}
+
+/* squash and stretch: along the direction of motion --sa, by --sx (long) and --sy (short) */
+.ring__stretch {
+  width: 100%;
+  height: 100%;
+  transform: rotate(calc(var(--sa, 0) * 1deg)) scale(var(--sx, 1), var(--sy, 1))
+    rotate(calc(var(--sa, 0) * -1deg));
+}
+
+/* Goo layer of the merge: the SVG filter is only applied while the merge runs (data-goo), to this
+   box around the orbit. The agent circle is not inside it. */
+.goo {
+  display: none;
+  position: absolute;
+  z-index: 1;
+  left: calc(-250 * var(--u));
+  top: calc(-250 * var(--u));
+  width: calc(500 * var(--u));
+  height: calc(500 * var(--u));
+  opacity: var(--goo-in, 0);
+}
+
+.porbit[data-goo='true'] .goo {
+  display: block;
+  filter: url('#porbit-goo');
+  will-change: transform;
+}
+
+.ring--goo {
+  left: 50%;
+  top: 50%;
+  z-index: auto;
+}
+
+.goo__center {
+  position: absolute;
+  left: calc(50% - 60.7845 * var(--u));
+  top: calc(50% - 60.7845 * var(--u));
+  width: calc(121.569 * var(--u));
+  height: calc(121.569 * var(--u));
+  border-radius: 50%;
+}
+
+.blob {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 50%;
+}
+
+/* the normal circles melt into their blobs, and icons and logos fade out */
+.ring:not(.ring--goo) .slot {
+  opacity: var(--normal, 1);
+}
+
+.slot__icon,
+.slot__logo {
+  opacity: var(--content, 1);
 }
 
 /* while the circles are being absorbed the sequence sets their position every frame */
 .porbit[data-merging='true'] .ring__arm--circle,
 .porbit[data-merging='true'] .ring__scale {
   transition: none;
+}
+
+/* will-change only while the merge runs */
+.porbit[data-merging='true'] .ring__arm--circle,
+.porbit[data-merging='true'] .ring__stretch {
+  will-change: transform;
 }
 
 /* Counter-rotation keeps the content of each circle upright. */
@@ -1032,6 +1149,10 @@ body:has(.agents) {
 
 .finale__done span + span {
   margin-top: calc(6 * var(--u));
+}
+
+.finale__cta[data-locked='true'] {
+  pointer-events: none;
 }
 
 .finale__cta {

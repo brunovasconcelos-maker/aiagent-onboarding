@@ -7,7 +7,11 @@ import { palettes } from '../data/palettes.js'
 import { useAgent } from '../context/AgentContext.jsx'
 import { useOnboarding } from '../context/OnboardingContext.jsx'
 import { buildCircles } from '../utils/circles.js'
+import { TIMING } from '../utils/creationSequence.js'
 import { orbitStore } from '../utils/orbitStore.js'
+
+// '#68ADD2' -> '104 173 210' (for rgb(r g b / alpha) in the burst of light)
+const rgbOf = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(' ')
 
 // Where the orbit is shown, by route: on the right side in the steps, in the center of the
 // page in the creation sequence, hidden everywhere else.
@@ -63,9 +67,28 @@ export default function PersistentOrbit() {
       data-pos={view.pos}
       data-instant={view.instant}
       aria-hidden="true"
+      style={{ '--agent-color': agent.color, '--agent-rgb': rgbOf(agent.color) }}
     >
+      {/* the gooey filter of the merge: blur, alpha threshold, then the original colors on top */}
+      <svg className="porbit__defs" width="0" height="0" focusable="false">
+        <defs>
+          <filter id="porbit-goo" x="0" y="0" width="100%" height="100%" colorInterpolationFilters="sRGB">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="0" result="blur" />
+            <feColorMatrix
+              in="blur"
+              mode="matrix"
+              values={`1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 ${TIMING.gooAlphaGain} ${TIMING.gooAlphaOffset}`}
+              result="goo"
+            />
+            <feComposite in="SourceGraphic" in2="goo" operator="atop" />
+          </filter>
+        </defs>
+      </svg>
       <div className="porbit__anchor">
-        <OrbitRing circles={shown} palette={palettes[agent.id]} mode={view.pos} />
+        <OrbitRing circles={shown} palette={palettes[agent.id]} mode={view.pos} agentColor={agent.color} />
+        {/* burst of light at the end of the creation, behind the agent circle */}
+        <div className="porbit__glow" />
+        <div className="porbit__burst-ring" />
         <div className="porbit__agent">
           <AgentCircle agent={agent} />
         </div>

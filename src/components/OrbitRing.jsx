@@ -118,9 +118,19 @@ export function OrbitSlot({ variant, content, palette, late }) {
   )
 }
 
+// The blob of a circle (its gradient, no icon) for the goo layer of the merge.
+function Blob({ variant, palette }) {
+  const { backgroundImage, bleed } = buildGradient(palette, variant)
+  return (
+    <div className="blob">
+      <div className="slot__gradient" style={{ backgroundImage, inset: `${-bleed * 100}%` }} />
+    </div>
+  )
+}
+
 // A filled circle. It moves with its arm (translate), is resized by `scale`, and
 // counter-rotates to stay upright.
-function RingCircle({ circle, layout, leaving, animateIn, palette }) {
+function RingCircle({ circle, layout, leaving, animateIn, palette, blob }) {
   // New circles start hidden and fade/scale in on the next frames.
   const [shown, setShown] = useState(!animateIn)
   useEffect(() => {
@@ -146,12 +156,19 @@ function RingCircle({ circle, layout, leaving, animateIn, palette }) {
         {/* counter-rotation by the same --orbit-angle the ring turns with */}
         <div className="ring__counter">
           <div className="ring__scale" style={{ '--scale': layout.scale }}>
-            <OrbitSlot
-              variant={circle.variant}
-              content={shown && !leaving ? { icon: circle.icon, logo: circle.logo } : null}
-              palette={palette}
-              late={circle.position === undefined}
-            />
+            {/* squash and stretch along the direction of motion (creation merge) */}
+            <div className="ring__stretch">
+              {blob ? (
+                <Blob variant={circle.variant} palette={palette} />
+              ) : (
+                <OrbitSlot
+                  variant={circle.variant}
+                  content={shown && !leaving ? { icon: circle.icon, logo: circle.logo } : null}
+                  palette={palette}
+                  late={circle.position === undefined}
+                />
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -168,7 +185,7 @@ function RingCircle({ circle, layout, leaving, animateIn, palette }) {
 //             circles that exist only when more than 6 are filled
 // The ring shows 6 positions (empty ones grey) until more than 6 circles are filled.
 // mode: 'side' (steps) or 'center' (creation sequence: only the filled circles).
-export default function OrbitRing({ circles, palette, mode }) {
+export default function OrbitRing({ circles, palette, mode, agentColor }) {
 
   // Circles that mount during the first render are not animated in.
   const mounted = useRef(false)
@@ -231,6 +248,25 @@ export default function OrbitRing({ circles, palette, mode }) {
   })
 
   return (
+    <>
+      {/* goo layer: one blob per circle and a center blob, under the circles, only during the merge
+          (display none otherwise); the filter is applied to this box, never to the agent circle */}
+      <div className="goo" aria-hidden="true">
+        <div className="ring ring--goo">
+          {items.map(({ circle, layout: itemLayout }) => (
+            <RingCircle
+              key={circle.key}
+              circle={circle}
+              layout={itemLayout}
+              leaving={false}
+              animateIn={false}
+              palette={palette}
+              blob
+            />
+          ))}
+        </div>
+        <div className="goo__center" style={{ backgroundColor: agentColor }} />
+      </div>
     <div className="ring">
       {BASE_OFFSETS.map((offset, i) => (
         <div key={`grey-${i}`} className="ring__arm ring__arm--grey" style={{ '--dx': offset.x, '--dy': offset.y }}>
@@ -248,5 +284,6 @@ export default function OrbitRing({ circles, palette, mode }) {
         />
       ))}
     </div>
+    </>
   )
 }
