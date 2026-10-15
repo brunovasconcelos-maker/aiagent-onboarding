@@ -2,20 +2,16 @@ import StepLayout from '../components/StepLayout.jsx'
 import { icons } from '../data/icons.js'
 import { getTaskSet } from '../data/tasks.js'
 import { useOnboarding } from '../context/OnboardingContext.jsx'
-import { buildCircles } from '../utils/circles.js'
 
 export default function Passo4() {
   const { answers, toggleTask } = useOnboarding()
 
   const options = getTaskSet(answers.purpose)
 
-  const circles = buildCircles(answers)
-
   return (
     <StepLayout
       titleLines={['Onde você mais quer', 'minha ajuda?']}
-      titleTop={184}
-      circles={circles}
+      titleTop={144}
       backTo="/passo-3"
       nextTo="/passo-5"
     >

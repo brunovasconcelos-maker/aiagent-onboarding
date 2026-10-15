@@ -8,9 +8,6 @@ export default function Passo3() {
 
   const selected = purposes.find((p) => p.id === answers.purpose) ?? null
 
-  // Position 0 holds the answer of this step; step 2 fills the other positions.
-  const slots = [selected ? selected.icon : null, null, null, null, null, null]
-
   const toggle = (id) => {
     if (selected && selected.id !== id) return
     setAnswer('purpose', selected ? null : id)
@@ -19,8 +16,7 @@ export default function Passo3() {
   return (
     <StepLayout
       titleLines={['Para que você quer usar ', 'o seu Inner Agente:']}
-      titleTop={180}
-      slots={slots}
+      titleTop={144}
       backTo="/passo-2"
       nextTo="/passo-4"
     >

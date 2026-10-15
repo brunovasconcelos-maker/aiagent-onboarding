@@ -553,41 +553,70 @@ body {
   outline-offset: calc(3 * var(--u));
 }
 
-/* The orbit area spans the full height of the window (it starts under the header: top -64px)
-   and the orbit sits at its vertical middle, so it is at 50% of the window height. Horizontally
-   it is centered at 1064.5px of the 1440px composition, the middle of the free space to the
-   right of the options. The orbit scale is the smaller of the width factor (--stage-u) and a
-   height factor that keeps its 439px circle between the header and the footer. */
-.orbit-area {
-  --u: min(
-    var(--stage-u),
-    max(
-      0.1px,
-      calc((50vh - max(64px, calc(88 * var(--stage-u))) - 8px) / 219.5)
-    )
+/* The persistent orbit (mounted once in Layout, outside the routes). It is fixed to the
+   window; its anchor point is the center of the agent circle: at 50% of the window height
+   and, depending on the mode, at 50% of the width (creation page) or 344.5px of the 1440px
+   composition to the right of it (steps). --orbit-u is the smaller of the width factor and a
+   height factor that keeps the 439px ring between the header and the footer. */
+:root {
+  --page-u: min(1px, calc(100vw / 1440));
+  --orbit-u: min(
+    var(--page-u),
+    max(0.1px, calc((50vh - max(64px, calc(88 * var(--page-u))) - 8px) / 219.5))
   );
-  --u: min(
-    var(--stage-u),
-    max(
-      0.1px,
-      calc((50dvh - max(64px, calc(88 * var(--stage-u))) - 8px) / 219.5)
-    )
-  );
-  position: absolute;
-  top: -64px;
-  height: 100vh;
-  height: 100dvh;
-  left: calc(1064.5 * var(--stage-u) - 219.5 * var(--u));
-  width: calc(438.998 * var(--u));
-  pointer-events: none;
 }
 
-.orbit-area__agent {
+@supports (height: 1dvh) {
+  :root {
+    --orbit-u: min(
+      var(--page-u),
+      max(0.1px, calc((50dvh - max(64px, calc(88 * var(--page-u))) - 8px) / 219.5))
+    );
+  }
+}
+
+.porbit {
+  --u: var(--orbit-u);
+  --orbit-angle: 0;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 300ms ease;
+}
+
+.porbit[data-mode='hidden'] {
+  opacity: 0;
+}
+
+.porbit__anchor {
   position: absolute;
-  left: calc(50% - 60.7845 * var(--u));
-  top: calc(50% - 60.7845 * var(--u));
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform: translate(calc(344.5 * var(--page-u)), 0);
+  transition: transform 600ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.porbit[data-pos='center'] .porbit__anchor {
+  transform: translate(0, 0);
+}
+
+/* Appearing from hidden: the position jumps, only the opacity fades. */
+.porbit[data-instant='true'] .porbit__anchor {
+  transition: none;
+}
+
+.porbit__agent {
+  position: absolute;
+  z-index: 2;
+  left: calc(-60.7845 * var(--u));
+  top: calc(-60.7845 * var(--u));
   width: calc(121.569 * var(--u));
   height: calc(121.569 * var(--u));
+  transform: scale(var(--pulse, 1));
 }
 
 .agent-circle,
@@ -608,11 +637,13 @@ body {
 
 .ring {
   position: absolute;
-  left: 50%;
-  top: 50%;
+  z-index: 1;
+  left: 0;
+  top: 0;
   width: 0;
   height: 0;
-  animation: ring-turn var(--orbit-duration) linear infinite;
+  /* one angle for the whole orbit, written by the orbit loop */
+  transform: rotate(calc(var(--orbit-angle) * 1deg));
   will-change: transform;
 }
 
@@ -629,7 +660,9 @@ body {
    the angle, then .ring__level turns back by the same angle (both with the same
    transition), so the ring can reshape along an arc and the circle never tilts. */
 .ring__arm--circle {
-  transform: rotate(calc(var(--phi) * 1deg)) translateX(calc(var(--radius) * var(--u) * -1));
+  /* --merge (0 to 1) is only used by the creation sequence: circles spiral into the center */
+  transform: rotate(calc(var(--phi) * 1deg))
+    translateX(calc(var(--radius) * var(--u) * -1 * (1 - var(--merge, 0))));
   transition: transform 0.4s ease-out;
 }
 
@@ -663,8 +696,14 @@ body {
 .ring__scale {
   width: 100%;
   height: 100%;
-  transform: scale(var(--scale));
+  transform: scale(calc(var(--scale) * (1 - var(--merge, 0))));
   transition: transform 0.4s ease-out;
+}
+
+/* while the circles are being absorbed the sequence sets their position every frame */
+.porbit[data-merging='true'] .ring__arm--circle,
+.porbit[data-merging='true'] .ring__scale {
+  transition: none;
 }
 
 /* Counter-rotation keeps the content of each circle upright. */
@@ -674,7 +713,8 @@ body {
   top: calc(-60.7845 * var(--u));
   width: calc(121.569 * var(--u));
   height: calc(121.569 * var(--u));
-  animation: ring-turn-back var(--orbit-duration) linear infinite;
+  /* undoes the rotation of the ring, with the same angle */
+  transform: rotate(calc(var(--orbit-angle) * -1deg));
   will-change: transform;
 }
 
@@ -737,14 +777,6 @@ body {
   height: 100%;
 }
 
-@keyframes ring-turn {
-  to { transform: rotate(360deg); }
-}
-
-@keyframes ring-turn-back {
-  to { transform: rotate(-360deg); }
-}
-
 /* The footer is rendered as a sibling of .step, outside the size container that scales the
    composition, so it is fixed to the window and not to that container. Its own scale uses the
    window width, which is the container width because the page never scrolls. */
@@ -794,10 +826,11 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .ring,
   .ring__counter {
-    animation: none;
     will-change: auto;
   }
 
+  .porbit,
+  .porbit__anchor,
   .ring__arm--circle,
   .ring__level,
   .ring__grey,
@@ -815,16 +848,19 @@ body {
    Frame y coordinates are shifted by 64px, the height of the header. */
 
 .finale {
-  container-type: inline-size;
   width: 100%;
 }
 
+/* The creation page only holds texts and the button. Everything is placed from the center of the
+   window, where the persistent orbit is (50% / 50%), with the distances of the Figma frame:
+   vertical offsets from the center scale with the orbit (--orbit-u), so on a short window the
+   texts follow the orbit instead of leaving the screen. */
 .finale__stage {
-  --u: min(1px, calc(100cqw / 1440));
-  position: relative;
-  width: calc(1440 * var(--u));
-  height: calc(864 * var(--u));
-  margin: 0 auto;
+  --u: var(--page-u);
+  --v: var(--orbit-u);
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
   animation: finale-in var(--fade-in) ease-out backwards;
 }
 
@@ -833,65 +869,10 @@ body {
   to { opacity: 1; }
 }
 
-.finale__center {
-  position: absolute;
-  z-index: 2;
-  left: calc(659.715 * var(--u));
-  top: calc(309.715 * var(--u));
-  width: calc(121.569 * var(--u));
-  height: calc(121.569 * var(--u));
-}
-
-/* The ring turns around the center of the agent circle; the circles pass behind it. */
-.finale__ring {
-  position: absolute;
-  z-index: 1;
-  left: calc(720.5 * var(--u));
-  top: calc(370.5 * var(--u));
-  width: 0;
-  height: 0;
-}
-
-.finale__ring[data-gone='true'] {
-  opacity: 0;
-  transition: opacity var(--done-fade) ease;
-}
-
-.finale__arm,
-.finale__level {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 0;
-  height: 0;
-}
-
-.finale__counter {
-  position: absolute;
-  left: calc(-60.7845 * var(--u));
-  top: calc(-60.7845 * var(--u));
-  width: calc(121.569 * var(--u));
-  height: calc(121.569 * var(--u));
-}
-
-.finale__scale {
-  width: 100%;
-  height: 100%;
-}
-
-/* will-change only while the sequence is moving things */
-.finale--animating .finale__ring,
-.finale--animating .finale__arm,
-.finale--animating .finale__counter,
-.finale--animating .finale__scale,
-.finale--animating .finale__center {
-  will-change: transform;
-}
-
 .finale__messages {
   position: absolute;
-  left: calc(500 * var(--u));
-  top: calc(622 * var(--u));
+  left: calc(50% - 220 * var(--u));
+  top: calc(50% + 251.5 * var(--v));
   width: calc(440 * var(--u));
   height: calc(26 * var(--u));
   transition: opacity var(--message-fade) ease;
@@ -932,8 +913,8 @@ body {
 
 .finale__done {
   position: absolute;
-  left: calc(503 * var(--u));
-  top: calc(471.283 * var(--u));
+  left: calc(50% - 217 * var(--u));
+  top: calc(50% + 100.78 * var(--v));
   width: calc(440 * var(--u));
   animation: finale-rise var(--done-fade) ease-out backwards;
 }
@@ -948,8 +929,9 @@ body {
 
 .finale__cta {
   position: absolute;
-  left: calc(673 * var(--u));
-  top: calc(569.283 * var(--u));
+  left: calc(50% - 47 * var(--u));
+  top: calc(50% + 198.78 * var(--v));
+  pointer-events: auto;
   height: calc(40 * var(--u));
   padding: calc(12 * var(--u)) calc(16 * var(--u));
   font-size: calc(14 * var(--u));
@@ -977,5 +959,30 @@ body {
   .finale__done,
   .finale__cta {
     animation-name: finale-in;
+  }
+}
+
+/* Route wrappers (see RouteTransition): only the left column of the steps fades between steps. */
+.route[data-enter='true'] {
+  animation: finale-in 200ms ease-out backwards;
+}
+
+.route--leaving {
+  position: fixed;
+  top: 64px;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  animation: route-out 200ms ease-out forwards;
+}
+
+@keyframes route-out {
+  to { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route[data-enter='true'],
+  .route--leaving {
+    animation: none;
   }
 }

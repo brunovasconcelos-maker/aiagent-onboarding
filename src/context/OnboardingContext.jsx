@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react'
 import { useAgent } from './AgentContext.jsx'
+import { orbitStore } from '../utils/orbitStore.js'
 import { firstFreePosition, nextExtraVariant } from '../utils/slots.js'
 
 const EMPTY_ANSWERS = {
@@ -52,6 +53,9 @@ export function OnboardingProvider({ children }) {
   // every other route sends the user back to "/" until then.
   const [answers, setAnswers] = useState(EMPTY_ANSWERS)
   const [started, setStarted] = useState(false)
+  // Phase of the creation sequence (null | creating | merging | done), set by the creation page
+  // and read by the persistent orbit.
+  const [creationPhase, setCreationPhase] = useState(null)
   const { resetAgent } = useAgent()
 
   const update = useCallback((compute) => setAnswers(compute), [])
@@ -62,6 +66,8 @@ export function OnboardingProvider({ children }) {
   const reset = useCallback(() => {
     setAnswers(EMPTY_ANSWERS)
     setStarted(false)
+    setCreationPhase(null)
+    orbitStore.reset()
     resetAgent()
   }, [resetAgent])
 
@@ -130,8 +136,8 @@ export function OnboardingProvider({ children }) {
   const toggleTool = useCallback((id) => toggleItem('tools', id), [toggleItem])
 
   const value = useMemo(
-    () => ({ answers, setAnswer, toggleTask, toggleTool, started, start, reset }),
-    [answers, setAnswer, toggleTask, toggleTool, started, start, reset],
+    () => ({ answers, setAnswer, toggleTask, toggleTool, started, start, reset, creationPhase, setCreationPhase }),
+    [answers, setAnswer, toggleTask, toggleTool, started, start, reset, creationPhase],
   )
 
   return <OnboardingContext.Provider value={value}>{children}</OnboardingContext.Provider>

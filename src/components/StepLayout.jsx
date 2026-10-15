@@ -1,37 +1,18 @@
 import { Link } from 'react-router-dom'
-import AgentCircle from './AgentCircle.jsx'
-import OrbitRing from './OrbitRing.jsx'
-import { agents } from '../data/agents.js'
-import { palettes } from '../data/palettes.js'
-import { useAgent } from '../context/AgentContext.jsx'
 
-// Shared layout of the onboarding steps: fixed title and orbit, a scrollable options
-// area on the left and a fixed footer. `titleTop` is the title position in the
-// 1440x928 Figma frame; the options start 114px below it (58px title + 56px gap).
-//
-// Orbit content, one of:
-//  - circles: the filled circles, see OrbitRing (grows past 6 circles);
-//  - slots: array of 6 entries (icon id or null), one per base position.
+// Shared layout of the onboarding steps: fixed title, a scrollable options area on the left
+// and a fixed footer. The orbit on the right is not part of the page (see PersistentOrbit).
+// `titleTop` is the title position in the 1440x928 Figma frame; the options start 114px
+// below it (58px title + 56px gap).
 export default function StepLayout({
   titleLines,
   titleTop,
-  slots,
-  circles,
   backTo,
   nextTo,
   backLabel = 'Voltar',
   nextLabel = 'Continuar',
   children,
 }) {
-  const { agentId } = useAgent()
-  const agent = agents.find((a) => a.id === agentId) ?? agents[0]
-
-  const filledCircles =
-    circles ??
-    slots.flatMap((icon, position) =>
-      icon ? [{ key: `position-${position}`, icon, variant: position, position }] : [],
-    )
-
   return (
     <>
       <div className="step">
@@ -44,13 +25,6 @@ export default function StepLayout({
 
           <div className="step__scroll">
             <div className="step__list">{children}</div>
-          </div>
-
-          <div className="orbit-area">
-            <div className="orbit-area__agent">
-              <AgentCircle agent={agent} />
-            </div>
-            <OrbitRing circles={filledCircles} palette={palettes[agent.id]} />
           </div>
         </div>
       </div>

@@ -1,7 +1,6 @@
 import StepLayout from '../components/StepLayout.jsx'
 import { tools } from '../data/tools.js'
 import { useOnboarding } from '../context/OnboardingContext.jsx'
-import { buildCircles } from '../utils/circles.js'
 
 export default function Passo5() {
   const { answers, toggleTool } = useOnboarding()
@@ -9,8 +8,7 @@ export default function Passo5() {
   return (
     <StepLayout
       titleLines={['Quais ferramentas você ', 'usa no seu dia a dia:']}
-      titleTop={184}
-      circles={buildCircles(answers)}
+      titleTop={144}
       backTo="/passo-4"
       nextTo="/passo-6"
       nextLabel="Confirmar"

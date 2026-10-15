@@ -2,9 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { icons } from '../data/icons.js'
 import { buildGradient } from '../utils/gradient.js'
 
-// One full turn of the ring, in seconds (same as the hardware rest screen).
-export const ORBIT_SECONDS = 120
-
 // The ring has 6 circles (some of them grey and empty) until more than 6 are filled;
 // then it has one circle per filled option.
 const BASE_COUNT = 6
@@ -62,6 +59,22 @@ export function computeLayout(circles) {
   return layout
 }
 
+// Layout in the center of the page (creation sequence): fewer than 6 circles are evenly
+// spaced around the ring at full size, in clockwise order of their position; 6 or more follow
+// the same rules as computeLayout.
+function finaleLayout(circles) {
+  if (circles.length === 0 || circles.length >= BASE_COUNT) return computeLayout(circles)
+  const layout = new Map()
+  ;[...circles]
+    .sort((a, b) => (a.position ?? 99) - (b.position ?? 99))
+    .forEach((circle, i) => {
+      layout.set(circle.key, { phi: (360 * i) / circles.length, radius: RING_RADIUS, scale: 1 })
+    })
+  return layout
+}
+
+export const layoutFor = (circles, mode) => (mode === 'center' ? finaleLayout(circles) : computeLayout(circles))
+
 // What a circle shows on top of its gradient: a white icon ({ icon: id }) or a tool logo in
 // its own colors ({ logo: { src, name, width, height } }).
 const contentId = (content) => content?.icon ?? content?.logo?.src ?? null
@@ -107,14 +120,7 @@ export function OrbitSlot({ variant, content, palette, late }) {
 
 // A filled circle. It moves with its arm (translate), is resized by `scale`, and
 // counter-rotates to stay upright.
-function RingCircle({ circle, layout, leaving, animateIn, ringRef, palette }) {
-  // A circle that mounts while the ring is already turning must start its counter-rotation
-  // at the ring's current angle, otherwise its icon would be tilted.
-  const [syncDelay] = useState(() => {
-    const time = ringRef.current?.getAnimations()[0]?.currentTime
-    return typeof time === 'number' ? -time : 0
-  })
-
+function RingCircle({ circle, layout, leaving, animateIn, palette }) {
   // New circles start hidden and fade/scale in on the next frames.
   const [shown, setShown] = useState(!animateIn)
   useEffect(() => {
@@ -137,7 +143,8 @@ function RingCircle({ circle, layout, leaving, animateIn, ringRef, palette }) {
     >
       {/* undoes the rotation of the arm, so the circle itself is not turned by it */}
       <div className="ring__level">
-        <div className="ring__counter" style={{ animationDelay: `${syncDelay}ms` }}>
+        {/* counter-rotation by the same --orbit-angle the ring turns with */}
+        <div className="ring__counter">
           <div className="ring__scale" style={{ '--scale': layout.scale }}>
             <OrbitSlot
               variant={circle.variant}
@@ -160,8 +167,8 @@ function RingCircle({ circle, layout, leaving, animateIn, ringRef, palette }) {
 //   position  base position 0-5 (clockwise from the left), undefined for the extra
 //             circles that exist only when more than 6 are filled
 // The ring shows 6 positions (empty ones grey) until more than 6 circles are filled.
-export default function OrbitRing({ circles, palette }) {
-  const ringRef = useRef(null)
+// mode: 'side' (steps) or 'center' (creation sequence: only the filled circles).
+export default function OrbitRing({ circles, palette, mode }) {
 
   // Circles that mount during the first render are not animated in.
   const mounted = useRef(false)
@@ -173,16 +180,18 @@ export default function OrbitRing({ circles, palette }) {
   // `order` is the render order of every mounted circle (current and leaving). It never
   // changes for a circle that stays mounted: moving a DOM node would cancel its transitions
   // and restart its animations.
-  const signature = circles.map((c) => `${c.key}:${c.position}:${c.icon ?? c.logo?.src}`).join('|')
+  const layout = layoutFor(circles, mode)
+  const signature = `${mode}/` + circles.map((c) => `${c.key}:${c.position}:${c.icon ?? c.logo?.src}`).join('|')
   const [previous, setPrevious] = useState({
     signature,
     circles,
+    layout,
     leaving: [],
     order: circles.map((c) => c.key),
   })
   if (previous.signature !== signature) {
     const keys = new Set(circles.map((c) => c.key))
-    const lastLayout = computeLayout(previous.circles)
+    const lastLayout = previous.layout
     const leaving = [
       ...previous.leaving.filter((l) => !keys.has(l.circle.key)),
       ...previous.circles
@@ -194,7 +203,7 @@ export default function OrbitRing({ circles, palette }) {
       ...previous.order.filter((key) => stillMounted.has(key)),
       ...circles.map((c) => c.key).filter((key) => !previous.order.includes(key)),
     ]
-    setPrevious({ signature, circles, leaving, order })
+    setPrevious({ signature, circles, layout, leaving, order })
   }
   const { leaving, order } = previous
   useEffect(() => {
@@ -211,8 +220,7 @@ export default function OrbitRing({ circles, palette }) {
     return () => clearTimeout(timer)
   }, [leaving])
 
-  const layout = computeLayout(circles)
-  const extended = circles.length > BASE_COUNT
+  const extended = circles.length > BASE_COUNT || mode === 'center'
 
   // (On the render that updates `previous` above, React discards this pass and renders again.)
   const items = order.flatMap((key) => {
@@ -223,7 +231,7 @@ export default function OrbitRing({ circles, palette }) {
   })
 
   return (
-    <div ref={ringRef} className="ring" style={{ '--orbit-duration': `${ORBIT_SECONDS}s` }}>
+    <div className="ring">
       {BASE_OFFSETS.map((offset, i) => (
         <div key={`grey-${i}`} className="ring__arm ring__arm--grey" style={{ '--dx': offset.x, '--dy': offset.y }}>
           <div className="ring__grey" data-hidden={extended} />
@@ -236,7 +244,6 @@ export default function OrbitRing({ circles, palette }) {
           layout={itemLayout}
           leaving={isLeaving}
           animateIn={mounted.current}
-          ringRef={ringRef}
           palette={palette}
         />
       ))}
