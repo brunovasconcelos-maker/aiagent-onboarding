@@ -5,6 +5,12 @@ import { useAgent } from '../context/AgentContext.jsx'
 
 const pct = (n) => `${n}%`
 
+// How far a character sticks out above the big circle, as a fraction of the circle diameter:
+// the visible part of the character is its image clipped by its frame, so the top edge is the
+// lower of the two tops. The stage reserves the largest value so no character (Rubi's horns)
+// ever reaches the title or the logo.
+const HEADROOM = Math.max(0, ...agents.map((a) => -Math.max(a.characterFrame.y, a.characterImage.y))) / 100
+
 function CharacterLayer({ agent }) {
   const { characterFrame: f, characterImage: i } = agent
   return (
@@ -50,13 +56,13 @@ export default function Passo2() {
   }
 
   return (
-    <div className="agents">
-      <div className="agents__stage">
-        <div className="agents__intro">
-          <h1 className="agents__title">Selecione seu agente</h1>
-          <p className="agents__subtitle">Pense bem, você não poderá mudar depois.</p>
-        </div>
+    <div className="agents" style={{ '--headroom': HEADROOM }}>
+      <div className="agents__intro">
+        <h1 className="agents__title">Selecione seu agente</h1>
+        <p className="agents__subtitle">Pense bem, você não poderá mudar depois.</p>
+      </div>
 
+      <div className="agents__stage">
         <div className="agents__list" role="radiogroup" aria-label="Agente">
           {agents.map((agent, index) => {
             const checked = agent.id === agentId
@@ -141,10 +147,11 @@ export default function Passo2() {
           ))}
         </div>
 
-        <Link to="/passo-3" className="btn agents__cta">
-          Selecionar
-        </Link>
       </div>
+
+      <Link to="/passo-3" className="btn agents__cta">
+        Selecionar
+      </Link>
     </div>
   )
 }

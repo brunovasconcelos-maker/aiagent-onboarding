@@ -217,52 +217,103 @@ body {
   }
 }
 
-/* Agent selector (/passo-2): designed at 1440px wide, scaled by --u.
-   Frame y coordinates are shifted by 64px, the height of the header. */
+/* Agent selector (/passo-2): fits the window with no scroll. A vertical column under the header:
+   intro, stage (circle, thumbnails, name) and the button.
+
+   Sizes (Figma frame 1440x928; y values below are distances in that frame):
+   - --tu scales the title and the button with the width (never above 1).
+   - --u is the scale of the stage: circle diameter = 480 * --u. It is the smaller of the width
+     factor (--tu) and the height factor --uh, the one that makes the circle fit when every
+     distance is at its minimum. Never above 1: nothing grows on large windows.
+   - The distances shrink first, smoothly, with the free height (--slack): header to title 60px,
+     title to the top of the stage 56px, circle to button 56px, bottom margin 98px, down to 16,
+     12, 16 and 16px. Only when they are all at the minimum does --u shrink the stage.
+   - Extra height (window taller than the frame) is split between the top and the bottom margins,
+     so the block stays centered.
+   The stage starts --headroom (fraction of the diameter) above the circle, for the characters
+   that stick out of it. */
 
 .agents {
-  container-type: inline-size;
+  --vh: 100vh;
+  --tu: min(1px, calc(100vw / 1440));
+  --title-h: calc(50 * var(--tu));
+  --button-h: calc(40 * var(--tu));
+  --min-sum: 60px; /* 16 + 12 + 16 + 16 */
+  --uh: max(
+    0.1px,
+    calc((var(--vh) - 64px - var(--title-h) - var(--button-h) - var(--min-sum)) / (480 * (1 + var(--headroom))))
+  );
+  --u: min(var(--tu), var(--uh));
+  --slack: calc(
+    var(--vh) - 64px - var(--title-h) - var(--button-h) - 480 * (1 + var(--headroom)) * var(--u)
+  );
+  /* free height above the minimum, shared by the four distances in proportion to (figma - min) */
+  --free: max(0px, calc(var(--slack) - var(--min-sum)));
+  --d1: min(calc(60 * var(--tu)), calc(16px + var(--free) * 0.2095));
+  --d2: min(calc(56 * var(--tu)), calc(12px + var(--free) * 0.2095));
+  --d3: min(calc(56 * var(--tu)), calc(16px + var(--free) * 0.1905));
+  --d4: min(calc(98 * var(--tu)), calc(16px + var(--free) * 0.3905));
+  --extra: max(0px, calc(var(--slack) - var(--d1) - var(--d2) - var(--d3) - var(--d4)));
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   width: 100%;
+  height: calc(var(--vh) - 64px);
+  padding: calc(var(--d1) + var(--extra) / 2) 0 calc(var(--d4) + var(--extra) / 2);
+  overflow: hidden;
+}
+
+@supports (height: 1dvh) {
+  .agents {
+    --vh: 100dvh;
+  }
+}
+
+/* this page never scrolls */
+html:has(.agents),
+body:has(.agents) {
+  overflow: hidden;
 }
 
 .agents__stage {
-  --u: min(1px, calc(100cqw / 1440));
   position: relative;
+  flex: none;
   width: calc(1440 * var(--u));
-  height: calc(864 * var(--u));
-  margin: 0 auto;
+  height: calc(480 * (1 + var(--headroom)) * var(--u));
+  margin: var(--d2) 0 var(--d3);
 }
 
 .agents__intro {
-  position: absolute;
-  left: calc(500 * var(--u));
-  top: calc(60 * var(--u));
-  width: calc(440 * var(--u));
+  flex: none;
+  width: calc(440 * var(--tu));
+  height: var(--title-h);
   text-align: center;
 }
 
 .agents__title {
   margin: 0;
-  font-size: calc(24 * var(--u));
+  font-size: calc(24 * var(--tu));
   font-weight: 500;
   line-height: 1;
-  letter-spacing: calc(-0.48 * var(--u));
+  letter-spacing: calc(-0.48 * var(--tu));
   color: #000;
 }
 
 .agents__subtitle {
-  margin: calc(12 * var(--u)) 0 0;
-  font-size: calc(14 * var(--u));
+  margin: calc(12 * var(--tu)) 0 0;
+  font-size: calc(14 * var(--tu));
   font-weight: 500;
   line-height: 1;
-  letter-spacing: calc(-0.28 * var(--u));
+  letter-spacing: calc(-0.28 * var(--tu));
   color: #817676;
 }
 
 .thumb {
   position: absolute;
   left: calc(var(--x) * var(--u));
-  top: calc((var(--y) - 64) * var(--u));
+  /* y in the frame; the circle top is at 254 and the stage starts --headroom above it */
+  top: calc((var(--y) - 254 + 480 * var(--headroom)) * var(--u));
   width: calc(80 * var(--u));
   height: calc(80 * var(--u));
   padding: 0;
@@ -311,7 +362,7 @@ body {
 .agents__circle {
   position: absolute;
   left: calc(480 * var(--u));
-  top: calc(190 * var(--u));
+  top: calc(480 * var(--headroom) * var(--u));
   width: calc(480 * var(--u));
   height: calc(480 * var(--u));
 }
@@ -353,7 +404,7 @@ body {
 .agents__names {
   position: absolute;
   left: calc(1000 * var(--u));
-  top: calc(382 * var(--u));
+  top: calc((192 + 480 * var(--headroom)) * var(--u));
   width: calc(360 * var(--u));
   height: calc(96 * var(--u));
 }
@@ -370,13 +421,11 @@ body {
 }
 
 .agents__cta {
-  position: absolute;
-  left: 50%;
-  top: calc(726 * var(--u));
-  height: calc(40 * var(--u));
-  padding: calc(12 * var(--u)) calc(16 * var(--u));
-  font-size: calc(14 * var(--u));
-  transform: translateX(-50%);
+  flex: none;
+  box-sizing: border-box;
+  height: var(--button-h);
+  padding: calc(12 * var(--tu)) calc(16 * var(--tu));
+  font-size: calc(14 * var(--tu));
 }
 
 @media (prefers-reduced-motion: reduce) {
