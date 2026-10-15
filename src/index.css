@@ -217,51 +217,25 @@ body {
   }
 }
 
-/* Agent selector (/passo-2): fits the window with no scroll. A vertical column under the header:
-   intro, stage (circle, thumbnails, name) and the button.
-
-   Sizes (Figma frame 1440x928; y values below are distances in that frame):
-   - --tu scales the title and the button with the width (never above 1).
-   - --u is the scale of the stage: circle diameter = 480 * --u. It is the smaller of the width
-     factor (--tu) and the height factor --uh, the one that makes the circle fit when every
-     distance is at its minimum. Never above 1: nothing grows on large windows.
-   - The distances shrink first, smoothly, with the free height (--slack): header to title 60px,
-     title to the top of the stage 56px, circle to button 56px, bottom margin 98px, down to 16,
-     12, 16 and 16px. Only when they are all at the minimum does --u shrink the stage.
-   - Extra height (window taller than the frame) is split between the top and the bottom margins,
-     so the block stays centered.
-   The stage starts --headroom (fraction of the diameter) above the circle, for the characters
-   that stick out of it. */
+/* Agent selector (/passo-2): fits the window with no scroll. The spacing is computed in
+   src/utils/agentsLayout.js (computeLayout) and written to the variables below on .agents:
+     --u          scale of the stage (circle diameter = 480 * --u), never above 1
+     --title-top  top of the title block, a gap below the logo (40 to 80px)
+     --stage-top  top of the stage, a gap below the title block
+   The button is fixed to the window, 32px from the bottom. The stage is centered on the window
+   width and, with the equal gaps above and below it, centered between title and button.
+   The title and the button keep their width-based size (--tu, never above 1). */
 
 .agents {
   --vh: 100vh;
   --tu: min(1px, calc(100vw / 1440));
-  --title-h: calc(50 * var(--tu));
-  --button-h: calc(40 * var(--tu));
-  --min-sum: 60px; /* 16 + 12 + 16 + 16 */
-  --uh: max(
-    0.1px,
-    calc((var(--vh) - 64px - var(--title-h) - var(--button-h) - var(--min-sum)) / (480 * (1 + var(--headroom))))
-  );
-  --u: min(var(--tu), var(--uh));
-  --slack: calc(
-    var(--vh) - 64px - var(--title-h) - var(--button-h) - 480 * (1 + var(--headroom)) * var(--u)
-  );
-  /* free height above the minimum, shared by the four distances in proportion to (figma - min) */
-  --free: max(0px, calc(var(--slack) - var(--min-sum)));
-  --d1: min(calc(60 * var(--tu)), calc(16px + var(--free) * 0.2095));
-  --d2: min(calc(56 * var(--tu)), calc(12px + var(--free) * 0.2095));
-  --d3: min(calc(56 * var(--tu)), calc(16px + var(--free) * 0.1905));
-  --d4: min(calc(98 * var(--tu)), calc(16px + var(--free) * 0.3905));
-  --extra: max(0px, calc(var(--slack) - var(--d1) - var(--d2) - var(--d3) - var(--d4)));
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  position: fixed;
+  top: 0;
+  left: 0;
   width: 100%;
-  height: calc(var(--vh) - 64px);
-  padding: calc(var(--d1) + var(--extra) / 2) 0 calc(var(--d4) + var(--extra) / 2);
+  height: var(--vh);
   overflow: hidden;
+  pointer-events: none; /* the logo stays clickable */
 }
 
 @supports (height: 1dvh) {
@@ -277,18 +251,20 @@ body:has(.agents) {
 }
 
 .agents__stage {
-  position: relative;
-  flex: none;
+  position: absolute;
+  top: var(--stage-top);
+  left: calc(50% - 720 * var(--u));
   width: calc(1440 * var(--u));
-  height: calc(480 * (1 + var(--headroom)) * var(--u));
-  margin: var(--d2) 0 var(--d3);
+  height: calc(var(--stage-h) * var(--u));
 }
 
 .agents__intro {
-  flex: none;
+  position: absolute;
+  top: var(--title-top);
+  left: calc(50% - 220 * var(--tu));
   width: calc(440 * var(--tu));
-  height: var(--title-h);
   text-align: center;
+  pointer-events: auto;
 }
 
 .agents__title {
@@ -310,6 +286,7 @@ body:has(.agents) {
 }
 
 .thumb {
+  pointer-events: auto;
   position: absolute;
   left: calc(var(--x) * var(--u));
   /* y in the frame; the circle top is at 254 and the stage starts --headroom above it */
@@ -421,9 +398,16 @@ body:has(.agents) {
 }
 
 .agents__cta {
-  flex: none;
+  /* fixed to the window (no transformed ancestor), centered with auto margins */
+  position: fixed;
+  bottom: 32px;
+  left: 0;
+  right: 0;
+  width: fit-content;
+  margin: 0 auto;
+  pointer-events: auto;
   box-sizing: border-box;
-  height: var(--button-h);
+  height: calc(40 * var(--tu));
   padding: calc(12 * var(--tu)) calc(16 * var(--tu));
   font-size: calc(14 * var(--tu));
 }

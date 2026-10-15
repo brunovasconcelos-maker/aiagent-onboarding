@@ -1,15 +1,16 @@
-import { useRef } from 'react'
+import { useLayoutEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { agents } from '../data/agents.js'
 import { useAgent } from '../context/AgentContext.jsx'
+import { CIRCLE, computeLayout, measureStage } from '../utils/agentsLayout.js'
 
 const pct = (n) => `${n}%`
 
-// How far a character sticks out above the big circle, as a fraction of the circle diameter:
-// the visible part of the character is its image clipped by its frame, so the top edge is the
-// lower of the two tops. The stage reserves the largest value so no character (Rubi's horns)
-// ever reaches the title or the logo.
-const HEADROOM = Math.max(0, ...agents.map((a) => -Math.max(a.characterFrame.y, a.characterImage.y))) / 100
+// Geometry of the stage at scale 1, the same for every agent (see measureStage). HEADROOM is how
+// far the tallest character (Rubi's horns) or ring sticks out above the circle, as a fraction of
+// the circle diameter.
+const STAGE = measureStage(agents)
+const HEADROOM = -STAGE.top / CIRCLE
 
 function CharacterLayer({ agent }) {
   const { characterFrame: f, characterImage: i } = agent
@@ -38,6 +39,51 @@ function CharacterLayer({ agent }) {
 export default function Passo2() {
   const { agentId, setAgentId } = useAgent()
   const radios = useRef([])
+  const rootRef = useRef(null)
+  const titleRef = useRef(null)
+  const buttonRef = useRef(null)
+
+  // Spacing: measure the logo, the title block and the button, compute the layout and write it
+  // to CSS variables on the page root. Recomputed (once per frame at most) when the window
+  // resizes, the visual viewport changes (browser zoom), the fonts load, or the title block or
+  // the button change size.
+  useLayoutEffect(() => {
+    const root = rootRef.current
+    let frame = 0
+    const apply = () => {
+      frame = 0
+      const logo = document.querySelector('.header img')
+      const layout = computeLayout({
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+        logoBottom: logo ? logo.getBoundingClientRect().bottom : 64,
+        titleHeight: titleRef.current.getBoundingClientRect().height,
+        buttonHeight: buttonRef.current.getBoundingClientRect().height,
+        stageHeight: STAGE.height,
+        stageHalfWidth: STAGE.halfWidth,
+      })
+      root.style.setProperty('--u', `${layout.u}px`)
+      root.style.setProperty('--title-top', `${layout.titleTop}px`)
+      root.style.setProperty('--stage-top', `${layout.stageTop}px`)
+      root.dataset.floor = String(layout.floor)
+    }
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(apply)
+    }
+    apply()
+    window.addEventListener('resize', schedule)
+    window.visualViewport?.addEventListener('resize', schedule)
+    document.fonts?.ready.then(schedule)
+    const observer = new ResizeObserver(schedule)
+    observer.observe(titleRef.current)
+    observer.observe(buttonRef.current)
+    return () => {
+      cancelAnimationFrame(frame)
+      window.removeEventListener('resize', schedule)
+      window.visualViewport?.removeEventListener('resize', schedule)
+      observer.disconnect()
+    }
+  }, [])
 
   const select = (index) => {
     const next = (index + agents.length) % agents.length
@@ -56,8 +102,12 @@ export default function Passo2() {
   }
 
   return (
-    <div className="agents" style={{ '--headroom': HEADROOM }}>
-      <div className="agents__intro">
+    <div
+      ref={rootRef}
+      className="agents"
+      style={{ '--headroom': HEADROOM, '--stage-h': STAGE.height }}
+    >
+      <div ref={titleRef} className="agents__intro">
         <h1 className="agents__title">Selecione seu agente</h1>
         <p className="agents__subtitle">Pense bem, você não poderá mudar depois.</p>
       </div>
@@ -149,7 +199,7 @@ export default function Passo2() {
 
       </div>
 
-      <Link to="/passo-3" className="btn agents__cta">
+      <Link ref={buttonRef} to="/passo-3" className="btn agents__cta">
         Selecionar
       </Link>
     </div>
